@@ -7,6 +7,9 @@ class File():
     self.nBlks = nBlks
     self.owner = owner
     
+  def blocksInfo(self):
+    return ', '.join([str(i) for i in range(self.firstBlk, self.firstBlk+self.nBlks)])
+    
 class FileSystem():
   def __init__(self, nBlks, files):
     self.nBlks = nBlks
@@ -65,14 +68,14 @@ class FileSystem():
   
     # Procura pelo arquivo, se existir emite erro
     if self.files.get(fileName) is not None:
-      print("ERROR: Arquivo \"{0}\" já existe, portanto impossível recriar".format(fileName))
-      return
+      #print("ERROR: Arquivo \"{0}\" já existe, portanto impossível recriar".format(fileName))
+      return 1, None
     
     # Encontra blocos contíguos livres pelo first-fit
     blkAddr = self.firstFit(nBlks)
     if blkAddr is None:
-      print("ERROR: Não há espaço no disco")
-      return
+      #print("ERROR: Não há espaço no disco")
+      return 2, None
     
     # Marca esses blocos como usados
     self.setUsedBlks(blkAddr, nBlks)
@@ -80,22 +83,27 @@ class FileSystem():
     # Adiciona o arquivo
     self.files[fileName] = File(fileName, blkAddr, nBlks, owner)
     
+    return 0, self.files[fileName]
+    
   def rmFile(self, fileName, process):
     
     # Procura pelo arquivo, se não existir emite erro
     if self.files.get(fileName) is None:
-      print("ERROR: Arquivo \"{0}\" não encontrado, portanto impossível remover".format(fileName))
-      return
+      #print("ERROR: Arquivo \"{0}\" não encontrado, portanto impossível remover".format(fileName))
+      return 1
     
     # Obtém posição e número de blocos
     file = self.files[fileName]
       
     # Verifica permissão ao arquivo
     if not(type(process) == Process.RealTimeProcess or file.owner is None or process == file.owner):
-      print("ERROR: Permissão negada ao processo PID={0} para acessar o arquivo \"{1}\"".format(process.pid))
+      #print("ERROR: Permissão negada ao processo PID={0} para acessar o arquivo \"{1}\"".format(process.pid))
+      return 2
     
     # Marca os blocos como livres
     self.unsetUsedBlks(file.firstBlk, file.nBlks)
     
     # Remove o arquivo
     del self.files[fileName]
+    
+    return 0
