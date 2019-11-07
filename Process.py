@@ -41,9 +41,9 @@ class DeleteFileOperation(FileOperation):
     if ret == 0:
       return True, "O processo {0} deletou o arquivo {1}".format(self.process.pid, self.fileName)
     elif ret == 1:
-      return True, "O processo {0} não pode deletar o arquivo {1} porque não existe esse arquivo".format(self.process.pid, self.fileName)
+      return False, "O processo {0} não pode deletar o arquivo {1} porque não existe esse arquivo".format(self.process.pid, self.fileName)
     elif ret == 2:
-      return True, "O processo {0} não pode deletar o arquivo {1} pois ele não tem permissão para esse arquivo".format(self.process.pid, self.fileName)
+      return False, "O processo {0} não pode deletar o arquivo {1} pois ele não tem permissão para esse arquivo".format(self.process.pid, self.fileName)
     
 class Process():
   def __init__(self, pid,
@@ -69,13 +69,16 @@ class Process():
     self.fileOps  = []
     self.pc       = 0
     self.nextFlOp = 0
-    
+    self.memOfst  = None
+  
+  # Adiciona uma operação de arquivo a lista de fileOps
   def addFileOp(self, num, op):
     self.fileOps.append((num, op))
     self.fileOps.sort()
     
   def exec(self, disk):
-    if self.cpuTime <= self.pc:
+    if not self.hasWorkToDo():
+      print("P{0} instruction {1} - NÃO HÁ MAIS INSTRUÇÕES PARA ESSE PROCESSO".format(self.pid, self.pc))
       return
     elif self.fileOps[self.nextFlOp][0] == self.pc:
       #print("EXECUTAR INSTRUÇÃO DE DISCO")

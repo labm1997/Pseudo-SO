@@ -10,15 +10,10 @@ class File():
   def blocksInfo(self):
     return ', '.join([str(i) for i in range(self.firstBlk, self.firstBlk+self.nBlks)])
     
-class FileSystem():
-  def __init__(self, nBlks, files):
+class BlockSystem():
+  def __init__(self, nBlks):
     self.nBlks = nBlks
     self.usedBlks = set()
-    self.files = {}
-    
-    for fileName in files:
-      self.setUsedBlks(files[fileName].firstBlk, files[fileName].nBlks)
-      self.files[fileName] = files[fileName]
   
   def firstFit(self, nBlks):
     blkUnionSize = 0
@@ -64,6 +59,17 @@ class FileSystem():
       else:
         print("WARNING: Conjunto de blocos usados pode estar incoerente: definindo como livre bloco que já é livre")
   
+  
+    
+class FileSystem(BlockSystem):
+  def __init__(self, nBlks, files):
+    BlockSystem.__init__(self, nBlks)
+    self.files = {}
+    
+    for fileName in files:
+      self.setUsedBlks(files[fileName].firstBlk, files[fileName].nBlks)
+      self.files[fileName] = files[fileName]
+
   def addFile(self, fileName, nBlks, owner):
   
     # Procura pelo arquivo, se existir emite erro

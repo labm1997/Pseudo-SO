@@ -1,5 +1,6 @@
 import Reader
 import Process
+import Memory
 
 queueSize = 1000
 queueDepth = 4
@@ -62,9 +63,10 @@ class ReadyQueue():
     self.queue.put(process, process.priority)
     
 class Dispatcher():
-  def __init__(self, processes, disk):
+  def __init__(self, processes, disk, memory):
     self.processesByInitTime = sorted(processes, key = lambda x: x.initTime)
     self.readyQueue = ReadyQueue()
+    self.memory = memory
     self.time = 0
     self.disk = disk
     self.currentProcess = None
@@ -72,13 +74,13 @@ class Dispatcher():
     
   def printInfo(self, process):
     if process is None: return
-    print("dispatcher =>\n\tPID: {0}\n\toffset: {1}\n\tblocks: {2}\n\tpriority: {3}\n\ttime: {4}\n\tprinters: {5}\n\tscanners: {6}\n\tmodems: {7}\n\tdrivers: {8}".format(process.pid, 0, process.memBlks, process.priority, process.initTime+1, process.printer, process.scanner, process.modem, process.sata))
+    print("dispatcher =>\n\tPID: {0}\n\toffset: {1}\n\tblocks: {2}\n\tpriority: {3}\n\ttime: {4}\n\tprinters: {5}\n\tscanners: {6}\n\tmodems: {7}\n\tdrivers: {8}".format(process.pid, process.memOfst, process.memBlks, process.priority, process.initTime+1, process.printer, process.scanner, process.modem, process.sata))
   
   def setCurrentProcess(self, process):
     if process is None: 
       self.currentProcess = process
       return
-    
+      
     self.cpuTime = process.cpuTime
     self.currentProcess = process
     self.printInfo(self.currentProcess)
@@ -95,17 +97,28 @@ class Dispatcher():
     if self.currentProcess is None:
       self.setCurrentProcess(processCandidate)
     
+    # Processo acabou
+    elif not self.currentProcess.hasWorkToDo():
+      print("O processo {0} acabou".format(self.currentProcess.pid))
+      print("P{0} return SIGINT".format(self.currentProcess.pid))
+      self.memory.freeBlocks(self.currentProcess)
+      self.setCurrentProcess(processCandidate)
+      
     # Tempo de CPU acabou
     elif self.cpuTime == 0:
       # Se ainda tinha o que processar emite erro
       if self.currentProcess.hasWorkToDo():
         print("P{0} instruction {1} - FALHA".format(self.currentProcess.pid, self.currentProcess.pc))
         print("O processo {0} esgotou seu tempo de CPU!".format(self.currentProcess.pid))
+        #self.readyQueue.add(self.currentProcess)
+        
+      print("P{0} return SIGINT".format(self.currentProcess.pid))
       self.setCurrentProcess(processCandidate)
     
     # Processo de tempo real pode preemptar
     elif type(self.currentProcess) != Process.RealTimeProcess and type(processCandidate) == Process.RealTimeProcess:
       self.readyQueue.add(self.currentProcess)
+      print("P{0} return SIGINT".format(self.currentProcess.pid))
       self.setCurrentProcess(processCandidate)
     
     # Processo candidato volta a fila de prontos
@@ -115,10 +128,12 @@ class Dispatcher():
     # Executa uma instrução do processo
     if self.currentProcess is None: 
       #print("Sem processo na fila de prontos! t = {0}".format(self.time))
-      if len(self.processesByInitTime) > 0: self.time = self.processesByInitTime[0].initTime
+      if len(self.processesByInitTime) > 0: 
+        self.time = self.processesByInitTime[0].initTime
+        return True
       else:
-        return False
         print("GAME OVER: Não há mais o que processar")
+        return False
     else:
       self.currentProcess.exec(self.disk)
     
@@ -135,8 +150,8 @@ class Dispatcher():
     
 processes = Reader.readProcesses("process.txt")
 disk = Reader.readFiles("files.txt", processes)
+memory = Memory.Memory()
 
-ReadyQueue()
-dispatcher = Dispatcher(processes, disk)
+dispatcher = Dispatcher(processes, disk, memory)
 
 while(dispatcher.run()): pass
