@@ -9,17 +9,6 @@ class Memory():
   def __init__(self):
     self.realTimeMemory = BlockSystem(realTimeBlocks)
     self.userMemory = BlockSystem(userBlocks)
-    
-  def verifyBlocks(self, process):
-    memory = self.realTimeMemory if type(process) == Process.RealTimeProcess else self.userMemory
-    
-    # Procura por um conjunto de blocos contíguos pelo firstFit
-    blkIdx = memory.firstFit(process.memBlks)
-    if blkIdx == None:
-      return False
-      
-    return True
-    
   
   def allocBlocks(self, process):
     memory = self.realTimeMemory if type(process) == Process.RealTimeProcess else self.userMemory

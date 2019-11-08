@@ -67,14 +67,14 @@ class Dispatcher():
     self.processesByInitTime = sorted(processes, key = lambda x: x.initTime)
     self.readyQueue = ReadyQueue()
     self.memory = memory
-    self.time = 0
+    self.time = self.processesByInitTime[0].initTime if len(self.processesByInitTime) > 0 else 0
     self.disk = disk
     self.currentProcess = None
     self.cpuTime = 0
     
   def printInfo(self, process):
     if process is None: return
-    print("dispatcher =>\n\tPID: {0}\n\toffset: {1}\n\tblocks: {2}\n\tpriority: {3}\n\ttime: {4}\n\tprinters: {5}\n\tscanners: {6}\n\tmodems: {7}\n\tdrivers: {8}".format(process.pid, process.memOfst, process.memBlks, process.priority, process.initTime+1, process.printer, process.scanner, process.modem, process.sata))
+    print("dispatcher =>\n\tPID: {0}\n\toffset: {1}\n\tblocks: {2}\n\tpriority: {3}\n\ttime: {4}\n\tprinters: {5}\n\tscanners: {6}\n\tmodems: {7}\n\tdrivers: {8}\n\tcurrentTime: {9}".format(process.pid, process.memOfst, process.memBlks, process.priority, process.cpuTime, process.printer, process.scanner, process.modem, process.sata, self.time))
   
   def setCurrentProcess(self, process):
     if process is None: 
@@ -113,10 +113,11 @@ class Dispatcher():
         #self.readyQueue.add(self.currentProcess)
         
       print("P{0} return SIGINT".format(self.currentProcess.pid))
+      self.memory.freeBlocks(self.currentProcess)
       self.setCurrentProcess(processCandidate)
     
-    # Processo de tempo real pode preemptar
-    elif type(self.currentProcess) != Process.RealTimeProcess and type(processCandidate) == Process.RealTimeProcess:
+    # Processo de maior prioridade pode preemptar
+    elif processCandidate is not None and processCandidate.priority < self.currentProcess.priority:
       self.readyQueue.add(self.currentProcess)
       print("P{0} return SIGINT".format(self.currentProcess.pid))
       self.setCurrentProcess(processCandidate)
@@ -125,27 +126,42 @@ class Dispatcher():
     elif processCandidate is not None:
       self.readyQueue.add(processCandidate)
     
-    # Executa uma instrução do processo
-    if self.currentProcess is None: 
-      #print("Sem processo na fila de prontos! t = {0}".format(self.time))
+    # Trata caso não haja um processo
+    if self.currentProcess is None:
+      # Não há processo na fila de prontos mas há processos a serem adicionados nela (futuramente)
       if len(self.processesByInitTime) > 0: 
-        self.time = self.processesByInitTime[0].initTime
+        # Pulamos para o tempo onde o processo é colocado na fila de prontos
+        self.time = max(self.processesByInitTime[0].initTime, self.time)
+        
+        # Tenta inserir processos na fila de prontos com base no novo tempo, se não conseguir inserir é pq faltou memória
+        if self.addProcessesToReadyQueue() == 0:
+          print("GAME OVER: Não há mais memória, no entanto ainda há processos não colocados na fila de prontos. Não há como continuar.")
+          return False
+        
         return True
       else:
         print("GAME OVER: Não há mais o que processar")
         return False
     else:
+      # Executa uma operação do processo
       self.currentProcess.exec(self.disk)
     
+    # Atualiza os tempos
     self.time = self.time + 1
     self.cpuTime = self.cpuTime - 1
     return True
   
   def addProcessesToReadyQueue(self):
+    nProcessInserted = 0
     for process in self.processesByInitTime:
       if self.time >= process.initTime:
+        if not self.memory.allocBlocks(process):
+          print("WARNING: t={1}: Processo P{0} não foi colocado na fila de prontos por falta de memória, será colocado em outra oportunidade".format(process.pid, self.time))
+          continue
         self.readyQueue.add(process)
         self.processesByInitTime.remove(process)
+        nProcessInserted = nProcessInserted + 1
+    return nProcessInserted
         
     
 processes = Reader.readProcesses("process.txt")
