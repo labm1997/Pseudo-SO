@@ -1,3 +1,5 @@
+import bcolors
+
 class Operation():
   def __init__(self):
     pass
@@ -60,6 +62,7 @@ class Process():
     self.pid      = pid
     self.initTime = initTime
     self.priority = priority
+    self.age      = 0
     self.cpuTime  = cpuTime
     self.memBlks  = memBlks
     self.printer  = printer
@@ -70,6 +73,24 @@ class Process():
     self.pc       = 0
     self.nextFlOp = 0
     self.memOfst  = None
+    
+    self.requiredResources = self.createRequiredResourcesList()
+    
+  def createRequiredResourcesList(self):
+    ret = []
+    if self.printer == 1:
+      ret.append("printer1")
+    if self.printer == 2:
+      ret.append("printer2")
+    if self.scanner == 1:
+      ret.append("scanner")
+    if self.modem == 1:
+      ret.append("modem")
+    if self.sata == 1:
+      ret.append("sata1")
+    if self.sata == 2:
+      ret.append("sata2")
+    return ret
   
   # Adiciona uma operação de arquivo a lista de fileOps
   def addFileOp(self, num, op):
@@ -84,13 +105,32 @@ class Process():
       #print("EXECUTAR INSTRUÇÃO DE DISCO")
       stat, msg = self.fileOps[self.nextFlOp][1].run(disk)
       self.nextFlOp = self.nextFlOp + 1
-      print("P{0} instruction {1} - {2}\n{3}".format(self.pid, self.pc, "SUCESSO" if stat else "FALHA", msg))
+      print("P{0} instruction {1} - {2}\n{3}".format(self.pid, self.pc, bcolors.OKGREEN + "SUCESSO" + bcolors.ENDC if stat else bcolors.FAIL + "FALHA" + bcolors.ENDC, msg))
     else:
       print("P{0} instruction {1} - SUCESSO CPU".format(self.pid, self.pc))
     self.pc = self.pc + 1
     
   def hasWorkToDo(self):
     return self.nextFlOp < len(self.fileOps)
+    
+  def allocResources(self, resources):
+    res = True
+    for resName in self.requiredResources:
+      ret = resources[resName].reserve(self)
+      res = res and ret
+    return res
+    
+  def deallocResources(self, resources):
+    for resName in self.requiredResources:
+      #print("deallocing " + resName)
+      resources[resName].dealloc(self)
+    
+  def doIhaveAllTheResourcesIneed(self, resources):
+    for resName in self.requiredResources:
+      if resources[resName].process is None or resources[resName].process.pid != self.pid:
+        #print(resName + ": " + str(resources[resName].process))
+        return False
+    return True
     
 class RealTimeProcess(Process):
   def __init__(self, *args):

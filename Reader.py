@@ -1,6 +1,7 @@
 import math
 import Disk
 import Process
+import bcolors
 
 def readProcesses(fileName):
   processes = []
@@ -31,7 +32,7 @@ def readFiles(fileName, processes):
       fields = line.replace(' ', '').split(',')
       pid = int(fields[0])
       if pid >= len(processes):
-        print("WARNING: Operação de arquivo em processo inexistente (PID = {0})".format(pid))
+        print(bcolors.WARNING + "WARNING" + bcolors.ENDC + ": Operação de arquivo em processo inexistente (PID = {0})".format(pid))
         continue
       
       # Operação de criar arquivo
