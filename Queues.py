@@ -23,6 +23,11 @@ class Queue():
     ret = self.data[0]
     self.data = self.data[1:]
     return ret
+    
+  # Retira o item no topo da fila
+  def pop(self):
+    if len(self.data) == 0: return
+    self.data = self.data[1:]
   
   # Pega o item no topo da fila, sem retirar dela
   def top(self):
@@ -102,6 +107,13 @@ class PriorityQueues():
   def top(self):
     for queue in self.queues:
       if queue.size() > 0: return queue.top()
+      
+  # Retira o primeiro da fila não vazia mais prioritária
+  def pop(self):
+    for queue in self.queues:
+      if queue.size() > 0: 
+        queue.pop()
+        return
     
   # Envelhece os elementos de todas as filas exceto a de tempo real
   def getOlder(self):
@@ -117,11 +129,14 @@ class ReadyQueue():
   
   # Retorna o processo mais prioritário
   def chooseProcessToRun(self):
-    return self.queue.get()
+    return self.queue.top()
   
   # Adiciona um processo a fila de prioridades com base na prioridade do processo
   def add(self, process):
     self.queue.put(process, process.priority)
+    
+  def pop(self):
+    self.queue.pop()
     
   # Envelhece os processos
   def getOlder(self):

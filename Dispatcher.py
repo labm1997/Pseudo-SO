@@ -93,17 +93,20 @@ class Dispatcher():
     processCandidate = self.readyQueue.chooseProcessToRun()
     
     # Atualiza o processo atual se não houver nenhum
-    if self.currentProcess is None: self.setCurrentProcess(processCandidate)
+    if self.currentProcess is None: 
+      self.setCurrentProcess(processCandidate)
+      
+      # Retira o candidado da fila de prontos
+      self.readyQueue.pop()
     
     # Processo de maior prioridade pode preemptar
     elif processCandidate is not None and processCandidate.priority < self.currentProcess.priority:
       self.readyQueue.add(self.currentProcess)
       print("P{0} return SIGINT".format(self.currentProcess.pid))
       self.setCurrentProcess(processCandidate)
-    
-    # Processo candidato volta a fila de prontos
-    elif processCandidate is not None:
-      self.readyQueue.add(processCandidate)
+      
+      # Retira o candidado da fila de prontos
+      self.readyQueue.pop()
     
     # Trata caso não haja um processo
     if self.currentProcess is None:
