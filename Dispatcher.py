@@ -113,13 +113,16 @@ class Dispatcher():
         # Pulamos para o tempo onde o processo é colocado na fila de prontos
         self.time = self.getNextTime()
         
-        # Tenta inserir processos na fila de prontos com base no novo tempo, se não conseguir inserir é pq faltou memória
+        # Se não há processos nos agendados com tempo maior que o atual é pq nenhum deles conseguiu memória e o programa acaba
         if self.time == -1:
           print("GAME OVER: Não há mais memória, no entanto ainda há processos não colocados na fila de prontos. Não há como continuar.")
           return False
         
+        # Tenta adicionar os processos a fila de prontos
         self.addProcessesToReadyQueue()
         return True
+        
+      # Programa acaba
       else:
         print("GAME OVER: Não há mais o que processar")
         return False
