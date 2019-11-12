@@ -6,15 +6,20 @@ class File():
     self.firstBlk = firstBlk
     self.nBlks = nBlks
     self.owner = owner
-    
+  
+  # Mostra os blocos do arquivo
   def blocksInfo(self):
     return ', '.join([str(i) for i in range(self.firstBlk, self.firstBlk+self.nBlks)])
     
 class BlockSystem():
   def __init__(self, nBlks):
+    # Número de blocos no sistema de blocos
     self.nBlks = nBlks
+    
+    # Conjunto de blocos usados
     self.usedBlks = set()
   
+  # Encontra o primeiro índice cujo qual nBlks a frente estão livres
   def firstFit(self, nBlks):
     blkUnionSize = 0
     blkIdx = 0
@@ -35,6 +40,7 @@ class BlockSystem():
     
     return blkIdx if (blkUnionSize == nBlks) else None
     
+  # Atualiza um grupo contíguo de blocos como usados
   def setUsedBlks(self, blkAddr, nBlks):
   
     for i in range(blkAddr,blkAddr+nBlks):
@@ -46,7 +52,8 @@ class BlockSystem():
       # Emite warning se já estiver marcado como usado
       else:
         print("WARNING: Conjunto de blocos usados pode estar incoerente: definindo como usado bloco que já está como usado")
-        
+  
+  # Atualiza um grupo contíguo de blocos como ocupados
   def unsetUsedBlks(self, blkAddr, nBlks):
   
     for i in range(blkAddr,blkAddr+nBlks):
@@ -59,28 +66,28 @@ class BlockSystem():
       else:
         print("WARNING: Conjunto de blocos usados pode estar incoerente: definindo como livre bloco que já é livre")
   
-  
-    
 class FileSystem(BlockSystem):
   def __init__(self, nBlks, files):
     BlockSystem.__init__(self, nBlks)
+    
+    # Dicionário com arquivo como chave e instância de File como valor
     self.files = {}
     
+    # Adiciona os arquivos iniciais ao sistema de arquivos
     for fileName in files:
       self.setUsedBlks(files[fileName].firstBlk, files[fileName].nBlks)
       self.files[fileName] = files[fileName]
-
+  
+  # Adiciona um arquivo com um dono
   def addFile(self, fileName, nBlks, owner):
   
     # Procura pelo arquivo, se existir emite erro
     if self.files.get(fileName) is not None:
-      #print("ERROR: Arquivo \"{0}\" já existe, portanto impossível recriar".format(fileName))
       return 1, None
     
     # Encontra blocos contíguos livres pelo first-fit
     blkAddr = self.firstFit(nBlks)
     if blkAddr is None:
-      #print("ERROR: Não há espaço no disco")
       return 2, None
     
     # Marca esses blocos como usados
@@ -90,12 +97,12 @@ class FileSystem(BlockSystem):
     self.files[fileName] = File(fileName, blkAddr, nBlks, owner)
     
     return 0, self.files[fileName]
-    
+  
+  # Remove um arquivo se o processo tiver permissão
   def rmFile(self, fileName, process):
     
     # Procura pelo arquivo, se não existir emite erro
     if self.files.get(fileName) is None:
-      #print("ERROR: Arquivo \"{0}\" não encontrado, portanto impossível remover".format(fileName))
       return 1
     
     # Obtém posição e número de blocos
@@ -103,7 +110,6 @@ class FileSystem(BlockSystem):
       
     # Verifica permissão ao arquivo
     if not(type(process) == Process.RealTimeProcess or file.owner is None or process == file.owner):
-      #print("ERROR: Permissão negada ao processo PID={0} para acessar o arquivo \"{1}\"".format(process.pid))
       return 2
     
     # Marca os blocos como livres

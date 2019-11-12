@@ -4,119 +4,37 @@ import Memory
 import bcolors
 import Resources
 import sys
-
-queueSize = 1000
-queueDepth = 4
-
-class Queue():
-  def __init__(self, maxsize=-1):
-    self.data = []
-    self.maxsize = maxsize
-  
-  def put(self, item):
-    if self.maxsize != -1 and len(self.data) >= self.maxsize:
-      print("ERROR: Fila cheia!")
-      return
-    
-    self.data.append(item)
-  
-  def get(self):
-    if len(self.data) == 0: return None
-    ret = self.data[0]
-    self.data = self.data[1:]
-    return ret
-  
-  def top(self):
-    if len(self.data) == 0: return None
-    return self.data[0]
-    
-  def size(self):
-    return len(self.data)
-      
-class ProcessQueue(Queue):
-  def __init__(self, priority, maxsize=-1):
-    Queue.__init__(self, maxsize=maxsize)
-    self.agingStep = 1
-    self.maxAge = 10
-    self.priority = priority
-    
-  def getOlder(self):
-    processToRemove = []
-    for process in self.data:
-      process.age = process.age + self.agingStep
-      if process.age >= self.maxAge:
-        process.priority = process.priority - 1
-        process.age = 0
-        processToRemove.append(process)
-        self.data.remove(process)
-        
-    return processToRemove
-  
-  def addProcesses(self, processList):
-    for process in processList:
-      self.put(process)
-    
-    
-class PriorityQueues():
-  def __init__(self, maxsize=queueSize, depth=queueDepth):
-    self.queues = [ProcessQueue(i, maxsize=queueSize) for i in range(queueDepth)]
-    self.queueDepth = queueDepth
-  
-  def put(self, process, level):
-    if level >= self.queueDepth:
-      print("ERROR: Impossível adicionar processo com essa prioridade")
-      return
-    
-    self.queues[level].put(process)
-  
-  def get(self):
-    for queue in self.queues:
-      if queue.size() > 0: return queue.get()
-      
-  def top(self):
-    for queue in self.queues:
-      if queue.size() > 0: return queue.top()
-      
-  def getOlder(self):
-    for idxAnt,queue in enumerate(self.queues[1:]):
-      processToRemove = queue.getOlder()
-      self.queues[idxAnt].addProcesses(processToRemove)
-
-class ReadyQueue():
-  def __init__(self):
-    self.queue = PriorityQueues()
-  
-  def chooseProcessToRun(self):
-    #print("TODO: Implementar FIFO com prioridade")
-    return self.queue.get()
-  
-  def add(self, process):
-    #print("TODO: Implementar adicionar na fila")
-    self.queue.put(process, process.priority)
-    
-  def getOlder(self):
-    self.queue.getOlder()
-    
-  def print(self):
-    for queue in self.queue.queues:
-      for process in queue.data:
-        print(process.relPrior)
+import Queues
     
 class Dispatcher():
   def __init__(self, processes, disk, memory, resources):
-    self.processesByInitTime = sorted(processes, key = lambda x: x.initTime)
-    self.readyQueue = ReadyQueue()
-    self.memory = memory
+    
+    # Lista ordenada de processos agendados por tempo de inicialização e prioridade
+    self.processesByInitTime = sorted(processes, key = lambda x: (x.initTime, x.priority))
+    
+    # Define o tempo inicial como o tempo do primeiro processo agendado
     self.time = self.processesByInitTime[0].initTime if len(self.processesByInitTime) > 0 else 0
+    
+    # Instancia a fila de prontos
+    self.readyQueue = Queues.ReadyQueue()
+    
+    # Salva elementos como variaveis internas
+    self.memory = memory
     self.disk = disk
-    self.currentProcess = None
-    self.cpuTime = 0
     self.resources = resources
     
+    # Define um processo na CPU
+    self.currentProcess = None
+    
+    # Tempo de CPU restante ao processo executando na CPU
+    self.cpuTime = 0
+    
+  # Mostra informações de um processo em execução
   def printInfo(self, process):
     if process is None: return
     print("dispatcher =>\n\tPID: {0}\n\toffset: {1}\n\tblocks: {2}\n\tpriority: {3}\n\ttime: {4}\n\tprinters: {5}\n\tscanners: {6}\n\tmodems: {7}\n\tdrivers: {8}\n\tcurrentTime: {9}\n\tage: {10}".format(process.pid, process.memOfst, process.memBlks, process.priority, process.cpuTime, process.printer, process.scanner, process.modem, process.sata, self.time, process.age))
   
+  # Atualiza o processo que está na CPU
   def setCurrentProcess(self, process):
     if process is None: 
       self.currentProcess = process
@@ -127,10 +45,12 @@ class Dispatcher():
     self.printInfo(self.currentProcess)
     print("process {0} =>\nP{0} STARTED".format(self.currentProcess.pid))
   
+  # Para cada recurso, se ele estiver disponível, o aloca para o processo que estiver em sua fila
   def allocResources(self):
     for resource in self.resources:
         self.resources[resource].alloc(self)
   
+  # Lida com o processo atual caso ele acabe ou não tenha mais tempo de CPU
   def handleCurrentProcess(self):
     if self.currentProcess is not None:
       
@@ -154,6 +74,7 @@ class Dispatcher():
         self.currentProcess.deallocResources(self.resources)
         self.setCurrentProcess(None)
   
+  # Núcleo do programa, simula um quantum
   def run(self):
     
     # Envelhecemos os processos na fila de prontos
@@ -211,37 +132,60 @@ class Dispatcher():
     self.time = self.time + 1
     self.cpuTime = self.cpuTime - 1
     return True
-    
+  
+  # Obtém o próximo tempo de simulação
   def getNextTime(self):
+    # O próximo tempo é o primeiro tempo de processo agendado maior que o tempo atual
     for process in self.processesByInitTime:
       if process.initTime > self.time:
         return process.initTime
-        
+    
+    # Se todos os tempos de processos agendados são menores é pq foram processos que não conseguiram memória e não há nada que se possa fazer
     return -1
   
+  # Adiciona processos da fila de agendados para a fila de prontos, alocando recursos necessários
   def addProcessesToReadyQueue(self):
-    nProcessInserted = 0
+    processToRemove = []
+    
     for process in self.processesByInitTime:
+    
+      # Se é hora de adicionar o processo a fila de prontos
       if self.time >= process.initTime:
+        
+        # Pula o processo se não tiver memória
         if not self.memory.allocBlocks(process):
           print(bcolors.WARNING + "WARNING" + bcolors.ENDC + ": t={1}: Processo P{0} não foi colocado na fila de prontos por falta de memória, será colocado em outra oportunidade".format(process.pid, self.time))
           continue
+        
+        # Se o processo consegue os recursos ele é adicionado a fila de prontos, allocResources adiciona automaticamente o processo a fila do recurso caso não consiga algum
         if process.allocResources(self.resources) is True:
           self.readyQueue.add(process)
+          
+        # Se o processo não consegue os recursos emite uma mensagem
         else:
           print(bcolors.WARNING + "WARNING" + bcolors.ENDC + ": t={1}: Processo P{0} não foi colocado na fila de prontos pois não conseguiu todos os recursos necessários".format(process.pid, self.time))
-        self.processesByInitTime.remove(process)
-        nProcessInserted = nProcessInserted + 1
-    return nProcessInserted
+        
+        processToRemove.append(process)
     
+    # Remove os processos que foram para a fila de prontos ou para alguma fila de bloqueio da fila de agendados
+    for process in processToRemove: self.processesByInitTime.remove(process)
+  
+  # Adiciona processo a lista de prontos se ele tem todos os recursos de que precisa para executar 
   def signalAvaliable(self, process):
     if process.doIhaveAllTheResourcesIneed(self.resources):
       self.readyQueue.add(process)
 
 def main():
+  # Instancia os processos com base no arquivo lido
   processes = Reader.readProcesses(sys.argv[1])
+  
+  # Instancia um disco com base no arquivo
   disk = Reader.readFiles(sys.argv[2], processes)
+  
+  # Instancia uma memória
   memory = Memory.Memory()
+  
+  # Define os recursos
   resources = {
     "scanner": Resources.Resource("scanner"),
     "printer1": Resources.Resource("printer1"),
@@ -251,8 +195,10 @@ def main():
     "sata2": Resources.Resource("sata2")
   }
 
+  # Instancia o dispachante passando processos, disco, memória e recursos de I/O
   dispatcher = Dispatcher(processes, disk, memory, resources)
-
+  
+  # Executa quantum a quantum
   while(dispatcher.run()): pass
   
 if __name__ == "__main__":
