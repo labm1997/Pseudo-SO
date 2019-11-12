@@ -3,6 +3,7 @@ import Process
 import Memory
 import bcolors
 import Resources
+import sys
 
 queueSize = 1000
 queueDepth = 4
@@ -143,11 +144,10 @@ class Dispatcher():
         
       # Tempo de CPU acabou
       elif self.cpuTime == 0:
-        # Se ainda tinha o que processar emite erro
-        if self.currentProcess.hasWorkToDo():
-          print(("P{0} instruction {1} - " + bcolors.FAIL + "FALHA" + bcolors.ENDC).format(self.currentProcess.pid, self.currentProcess.pc))
-          print("O processo {0} esgotou seu tempo de CPU!".format(self.currentProcess.pid))
-          #self.readyQueue.add(self.currentProcess)
+        # Emite erro
+        print(("P{0} instruction {1} - " + bcolors.FAIL + "FALHA" + bcolors.ENDC).format(self.currentProcess.pid, self.currentProcess.pc))
+        print("O processo {0} esgotou seu tempo de CPU!".format(self.currentProcess.pid))
+        #self.readyQueue.add(self.currentProcess)
           
         print("P{0} return SIGINT".format(self.currentProcess.pid))
         self.memory.freeBlocks(self.currentProcess)
@@ -190,13 +190,14 @@ class Dispatcher():
       # Não há processo na fila de prontos mas há processos a serem adicionados nela (futuramente)
       if len(self.processesByInitTime) > 0:
         # Pulamos para o tempo onde o processo é colocado na fila de prontos
-        self.time = max(self.processesByInitTime[0].initTime, self.time)
+        self.time = self.getNextTime()
         
         # Tenta inserir processos na fila de prontos com base no novo tempo, se não conseguir inserir é pq faltou memória
-        if self.addProcessesToReadyQueue() == 0:
+        if self.time == -1:
           print("GAME OVER: Não há mais memória, no entanto ainda há processos não colocados na fila de prontos. Não há como continuar.")
           return False
         
+        self.addProcessesToReadyQueue()
         return True
       else:
         print("GAME OVER: Não há mais o que processar")
@@ -210,6 +211,13 @@ class Dispatcher():
     self.time = self.time + 1
     self.cpuTime = self.cpuTime - 1
     return True
+    
+  def getNextTime(self):
+    for process in self.processesByInitTime:
+      if process.initTime > self.time:
+        return process.initTime
+        
+    return -1
   
   def addProcessesToReadyQueue(self):
     nProcessInserted = 0
@@ -231,8 +239,8 @@ class Dispatcher():
       self.readyQueue.add(process)
 
 def main():
-  processes = Reader.readProcesses("process.txt")
-  disk = Reader.readFiles("files.txt", processes)
+  processes = Reader.readProcesses(sys.argv[1])
+  disk = Reader.readFiles(sys.argv[2], processes)
   memory = Memory.Memory()
   resources = {
     "scanner": Resources.Resource("scanner"),
