@@ -30,7 +30,7 @@ class Dispatcher():
     self.currentProcess = None
     
     # Tempo de CPU restante ao processo executando na CPU
-    self.cpuTime = 0
+    #self.cpuTime = 0
     
   # Mostra informações de um processo em execução
   def printInfo(self, process):
@@ -43,7 +43,7 @@ class Dispatcher():
       self.currentProcess = process
       return
       
-    self.cpuTime = process.cpuTime
+    #self.cpuTime = process.cpuTime
     self.currentProcess = process
     self.printInfo(self.currentProcess)
     print("process {0} =>\nP{0} STARTED".format(self.currentProcess.pid))
@@ -58,18 +58,24 @@ class Dispatcher():
     if self.currentProcess is not None:
       
       # Processo acabou
-      if not self.currentProcess.hasWorkToDo():
-        print("O processo {0} acabou".format(self.currentProcess.pid))
-        print("P{0} return SIGINT".format(self.currentProcess.pid))
-        self.memory.freeBlocks(self.currentProcess)
-        self.currentProcess.deallocResources(self.resources)
-        self.setCurrentProcess(None)
+      #if not self.currentProcess.hasWorkToDo():
+      #  print("O processo {0} acabou".format(self.currentProcess.pid))
+      #  print("P{0} return SIGINT".format(self.currentProcess.pid))
+      #  self.memory.freeBlocks(self.currentProcess)
+      #  self.currentProcess.deallocResources(self.resources)
+      #  self.setCurrentProcess(None)
         
       # Tempo de CPU acabou
-      elif self.cpuTime == 0:
+      #elif self.currentProcess.cpuTime == 0:
+      if self.currentProcess.cpuTime == 0:
         # Emite erro
-        print(("P{0} instruction {1} - " + bcolors.FAIL + "FALHA" + bcolors.ENDC).format(self.currentProcess.pid, self.currentProcess.pc))
-        print("O processo {0} esgotou seu tempo de CPU!".format(self.currentProcess.pid))
+        
+        if self.currentProcess.hasWorkToDo():
+          print(("P{0} instruction {1} - " + bcolors.FAIL + "FALHA" + bcolors.ENDC).format(self.currentProcess.pid, self.currentProcess.pc))
+          print("O processo {0} esgotou seu tempo de CPU!".format(self.currentProcess.pid))
+        else:
+          print("O processo {0} acabou".format(self.currentProcess.pid))
+        
         #self.readyQueue.add(self.currentProcess)
           
         print("P{0} return SIGINT".format(self.currentProcess.pid))
@@ -137,13 +143,13 @@ class Dispatcher():
         print("GAME OVER: Não há mais o que processar")
         return False
     
-    # Executa uma operação do processo
+    # Executa uma operação do processo e atualiza o tempo de CPU
     else:
       self.currentProcess.exec(self.disk)
+      self.currentProcess.cpuTime = self.currentProcess.cpuTime - 1
     
     # Atualiza os tempos
     self.time = self.time + 1
-    self.cpuTime = self.cpuTime - 1
     self.timeVariation = 1
     return True
   

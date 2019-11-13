@@ -109,7 +109,7 @@ class FileSystem(BlockSystem):
     file = self.files[fileName]
       
     # Verifica permissão ao arquivo
-    if not(type(process) == Process.RealTimeProcess or file.owner is None or process == file.owner):
+    if not(type(process) == Process.RealTimeProcess or process == file.owner):
       return 2
     
     # Marca os blocos como livres

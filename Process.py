@@ -128,8 +128,9 @@ class Process():
   def exec(self, disk):
     # Se o processo não tem o que fazer, emite um aviso e não faz nada
     if not self.hasWorkToDo():
-      print("P{0} instruction {1} - NÃO HÁ MAIS INSTRUÇÕES PARA ESSE PROCESSO".format(self.pid, self.pc))
-      return
+      #print("P{0} instruction {1} - NÃO HÁ MAIS INSTRUÇÕES PARA ESSE PROCESSO".format(self.pid, self.pc))
+      print(("P{0} instruction {1} - " + bcolors.OKGREEN + "SUCESSO CPU" + bcolors.ENDC).format(self.pid, self.pc))
+      #return
     
     # Se a instrução a ser executada é de arquivo
     elif self.fileOps[self.nextFlOp][0] == self.pc:
@@ -144,7 +145,7 @@ class Process():
     
     # Executa uma instrução de CPU
     else:
-      print("P{0} instruction {1} - SUCESSO CPU".format(self.pid, self.pc))
+      print(("P{0} instruction {1} - " + bcolors.OKGREEN + "SUCESSO CPU" + bcolors.ENDC).format(self.pid, self.pc))
     
     # Atualiza o Program Counter do processo
     self.pc = self.pc + 1
