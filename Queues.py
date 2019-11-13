@@ -52,17 +52,17 @@ class ProcessQueue(Queue):
     self.priority = priority
     
   # Envelhece os processos na fila
-  def getOlder(self):
+  def getOlder(self, step):
     processToRemove = []
     
     for process in self.data:
       # Envelhece
-      process.age = process.age + self.agingStep
+      process.age = process.age + step
       
       # Processo é velho demais
       if process.age >= self.maxAge:
-        # Muda a prioridade
-        process.priority = process.priority - 1
+        # Muda a prioridade de acordo com o quanto mais velho for o processo, mas sem ser menor que 0
+        process.priority = max(process.priority - (process.age // self.maxAge), 0)
         
         # Zera a idade
         process.age = 0
@@ -116,12 +116,13 @@ class PriorityQueues():
         return
     
   # Envelhece os elementos de todas as filas exceto a de tempo real
-  def getOlder(self):
+  def getOlder(self, step):
     for idxAnt,queue in enumerate(self.queues[1:]):
-      processToRemove = queue.getOlder()
+      processToRemove = queue.getOlder(step)
       
-      # Adiciona os velhos a fila de maior prioridade
-      self.queues[idxAnt].addProcesses(processToRemove)
+      # Adiciona os velhos a fila de acordo com a prioridade do processo
+      for process in processToRemove:
+        self.queues[process.priority].put(process)
 
 class ReadyQueue():
   def __init__(self):
@@ -139,8 +140,8 @@ class ReadyQueue():
     self.queue.pop()
     
   # Envelhece os processos
-  def getOlder(self):
-    self.queue.getOlder()
+  def getOlder(self, step):
+    self.queue.getOlder(step)
   
   def print(self):
     for queue in self.queue.queues:

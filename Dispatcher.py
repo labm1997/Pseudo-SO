@@ -15,6 +15,9 @@ class Dispatcher():
     # Define o tempo inicial como o tempo do primeiro processo agendado
     self.time = self.processesByInitTime[0].initTime if len(self.processesByInitTime) > 0 else 0
     
+    # Mantém variações de tempo
+    self.timeVariation = 0
+    
     # Instancia a fila de prontos
     self.readyQueue = Queues.ReadyQueue()
     
@@ -78,7 +81,7 @@ class Dispatcher():
   def run(self):
     
     # Envelhecemos os processos na fila de prontos
-    self.readyQueue.getOlder()
+    self.readyQueue.getOlder(self.timeVariation)
     
     # Lida com o processo atual, retirando se ele acabou e desalocando seus recursos
     self.handleCurrentProcess()
@@ -114,12 +117,16 @@ class Dispatcher():
       # Não há processo na fila de prontos mas há processos a serem adicionados nela (futuramente)
       if len(self.processesByInitTime) > 0:
         # Pulamos para o tempo onde o processo é colocado na fila de prontos
-        self.time = self.getNextTime()
+        candidateTime = self.getNextTime()
         
         # Se não há processos nos agendados com tempo maior que o atual é pq nenhum deles conseguiu memória e o programa acaba
-        if self.time == -1:
+        if candidateTime == -1:
           print("GAME OVER: Não há mais memória, no entanto ainda há processos não colocados na fila de prontos. Não há como continuar.")
           return False
+          
+        # Atualiza o tempo
+        self.timeVariation = candidateTime - self.time
+        self.time = candidateTime
         
         # Tenta adicionar os processos a fila de prontos
         self.addProcessesToReadyQueue()
@@ -137,6 +144,7 @@ class Dispatcher():
     # Atualiza os tempos
     self.time = self.time + 1
     self.cpuTime = self.cpuTime - 1
+    self.timeVariation = 1
     return True
   
   # Obtém o próximo tempo de simulação
